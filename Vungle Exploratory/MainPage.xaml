@@ -9,6 +9,10 @@
     Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
 
     <Grid>
+        <Button x:Name="LoadPlcA" Content="Load Placement A" Margin="165,148,0,0" VerticalAlignment="Top" Height="72" Width="194" Click="LoadPlacementA"/>
+        <Button x:Name="LoadPlcB" Content="Load Placement B" Margin="165,279,0,0" VerticalAlignment="Top" Height="72" Width="194" Click="LoadPlacementB"/>
+        <Button x:Name="PlayPlcA" IsEnabled="False" Content="Play Placement A" Margin="400,148,0,0" VerticalAlignment="Top" Height="72" Width="194" Click="PlayPlacementA"/>
+        <Button x:Name="PlayPlcB" IsEnabled="False" Content="Play Placement B" Margin="400,279,0,0" VerticalAlignment="Top" Height="72" Width="194" Click="PlayPlacementB"/>
 
     </Grid>
 </Page>

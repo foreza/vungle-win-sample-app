@@ -26,71 +26,126 @@ namespace Vungle_Exploratory
     public sealed partial class MainPage : Page
     {
 
+        private VungleAd vungleProvider;
         private VungleAd inmobiProvider;
-        private VungleAd vartyrInstance;
+
+        String appID = "5f1a11808ffe460001a441cf";
+        String plcA = "LANDING-0232123";        // Gets automatically loaded
+        String plcB = "INFO_PAGE-7076639";
+
+
+        Button playA;
+        Button playB;
+
 
         public MainPage()
         {
             this.InitializeComponent();
+            configureUI();
             initializeSDK();
             registerHandlers();
         }
 
-        public void initializeSDK()
+        public void configureUI()
         {
-            inmobiProvider = AdFactory.GetInstance("5f1a11808ffe460001a441cf");
 
-            try
-            {
-                vartyrInstance = AdFactory.GetInstance("5f1a17226694ec0001781d16");
+            playA = FindName("PlayPlcA") as Button;
+            playB = FindName("PlayPlcB") as Button;
+            playA.IsEnabled = playB.IsEnabled = false;
+        }
 
-            } catch (InvalidOperationException e)
-            {
-                Debug.WriteLine($"caught {e}");
+        public async void togglePlayButtonStatusForPlacement(string placement, Boolean enabled)
+        {
+            await Windows.ApplicationModel.Core.CoreApplication.MainView.CoreWindow.Dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+             {
 
-            }
+                 if (placement == plcA)
+                 {
+                     playA.IsEnabled = enabled;
+
+                 }
+
+                 if (placement == plcB)
+                 {
+                     playB.IsEnabled = enabled;
+                 }
+             });
         }
 
 
+        public void initializeSDK() {
+            vungleProvider = AdFactory.GetInstance(appID); // From a core integration
+            inmobiProvider = AdFactory.GetInstance(appID); // Simulate the handler that InMobi will reflect and attach itself to
+        }
 
 
         public void registerHandlers()
         {
             inmobiProvider.OnAdPlayableChanged += InMobiHandler_OnAdPlayableChanged;
             inmobiProvider.OnInitCompleted += InMobiHandler_OnInitCompleted;
-
-            if (vartyrInstance != null)
-            {
-                vartyrInstance.OnAdPlayableChanged += VartyrInstance_OnAdPlayableChanged;
-                vartyrInstance.OnInitCompleted += VartyrInstance_OnInitCompleted;
-            }
-
+            inmobiProvider.OnAdEnd += InmobiProvider_OnAdEnd;
         }
 
-        private void VartyrInstance_OnInitCompleted(object sender, ConfigEventArgs e)
+
+        private void InmobiProvider_OnAdEnd(object sender, AdEndEventArgs e)
         {
-            Debug.WriteLine("VartyrInstance_OnInitCompleted");
+            Debug.WriteLine($"InmobiProvider_OnAdEnd for {e.Placement}");
+            togglePlayButtonStatusForPlacement(e.Placement, false);
         }
+
 
         private void InMobiHandler_OnInitCompleted(object sender, ConfigEventArgs e)
         {
-            Debug.WriteLine("InMobiHandler_OnInitCompleted");
-            doAdRequestForInstance(inmobiProvider, "5f1a11808ffe460001a441cf");
+            // Ad request to the instance (plcA) is triggered by Vungle on preload
+
+            var initString = $"InMobiHandler_OnInitCompleted, InMobi Handler Init: {e.Initialized}";
+
+            if (e.Initialized == true)
+            {
+                for (var i = 0; i < e.Placements.Length; ++i)
+                {
+                    initString += $"\n\t PLC: {e.Placements[i].ReferenceId}" +
+                        $" isAutoCached: {e.Placements[i].IsAutoCached}";
+                }
+            }
+
+            Debug.WriteLine(initString);
         }
 
-        public void doAdRequestForInstance(VungleAd instance, String placement)
+
+        private void LoadPlacementA(object sender, RoutedEventArgs e)
         {
-            instance.LoadAd(placement);
+            Debug.WriteLine($"Loading Placement A: {plcA}");
+            inmobiProvider.LoadAd(plcA);
         }
 
-        public async void playAdForInMobiInstance(String placement){
-            AdConfig adConfig = new AdConfig();
-            adConfig.Orientation = DisplayOrientations.Portrait;
-            adConfig.SoundEnabled = false;
-            await inmobiProvider.PlayAdAsync(adConfig, placement);
+        private void LoadPlacementB(object sender, RoutedEventArgs e)
+        {
+            Debug.WriteLine($"Loading Placement B: {plcB}");
+            inmobiProvider.LoadAd(plcB);
         }
 
-        public async void playAdForInstanceVartyr(String placement)
+        private async void playAdForPlacementAsync(string placement)
+        {
+            await Windows.ApplicationModel.Core.CoreApplication.MainView.Dispatcher.RunAsync(CoreDispatcherPriority.Normal,
+new DispatchedHandler(() => playAdForInMobiInstance(placement)));
+        }
+
+        private void PlayPlacementA(object sender, RoutedEventArgs e)
+        {
+            Debug.WriteLine($"Playing Placement A: {plcA}");
+            playAdForPlacementAsync(plcA);
+
+        }
+
+        private void PlayPlacementB(object sender, RoutedEventArgs e)
+        {
+            Debug.WriteLine($"Playing Placement B: {plcB}");
+            playAdForPlacementAsync(plcB);
+        }
+
+
+        public async void playAdForInMobiInstance(String placement)
         {
             AdConfig adConfig = new AdConfig();
             adConfig.Orientation = DisplayOrientations.Landscape;
@@ -98,24 +153,16 @@ namespace Vungle_Exploratory
             await inmobiProvider.PlayAdAsync(adConfig, placement);
         }
 
-        private async void InMobiHandler_OnAdPlayableChanged(object sender, AdPlayableEventArgs e)
+        private void InMobiHandler_OnAdPlayableChanged(object sender, AdPlayableEventArgs e)
         {
             if (e.AdPlayable == true)
             {
-                await Windows.ApplicationModel.Core.CoreApplication.MainView.Dispatcher.RunAsync(CoreDispatcherPriority.Normal,
-                  new DispatchedHandler(() => playAdForInMobiInstance(e.Placement)));
+                Debug.WriteLine($"Ad loaded for placement {e.Placement}");
+                togglePlayButtonStatusForPlacement(e.Placement, true);
             }
+
         }
 
-
-        private async void VartyrInstance_OnAdPlayableChanged(object sender, AdPlayableEventArgs e)
-        {
-            if (e.AdPlayable == true)
-            {
-                await Windows.ApplicationModel.Core.CoreApplication.MainView.Dispatcher.RunAsync(CoreDispatcherPriority.Normal,
-                  new DispatchedHandler(() => playAdForInstanceVartyr(e.Placement)));
-            }
-        }
 
         // TODO: handle disposal
     }
